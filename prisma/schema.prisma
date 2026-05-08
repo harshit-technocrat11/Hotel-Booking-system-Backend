@@ -4,10 +4,144 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum Role {
+  CUSTOMER
+  OWNER
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id       String  @id @default(cuid())
+  name     String
+  email    String  @unique
+  password String
+  role     Role    @default(CUSTOMER)
+  phone    String?
+
+  hotels   Hotel[]
+  bookings Booking[]
+  reviews  Review[]
+
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@map("users")
+}
+
+model Hotel {
+  id String @id @default(cuid())
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  name        String
+  description String?
+
+  city    String
+  country String
+
+  amenities String[]
+
+  rating       Float @default(0)
+  totalReviews Int   @default(0)
+
+  rooms    Room[]
+  bookings Booking[]
+  reviews  Review[]
+
+  createdAt DateTime @default(now())
+
+  @@index([city])
+  @@index([country])
+  @@index([rating])
+  @@map("hotels")
+}
+
+model Room {
+  id String @id @default(cuid())
+
+  hotelId String
+  hotel   Hotel  @relation(fields: [hotelId], references: [id], onDelete: Cascade)
+
+  roomNumber String
+  roomType   String
+
+  pricePerNight Float
+  maxOccupancy  Int
+
+  bookings Booking[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([hotelId, roomNumber])
+  @@index([hotelId])
+  @@index([pricePerNight])
+  @@map("rooms")
+}
+
+model Booking {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  roomId String
+  room   Room   @relation(fields: [roomId], references: [id])
+
+  hotelId String
+  hotel   Hotel  @relation(fields: [hotelId], references: [id])
+
+  checkInDate  DateTime
+  checkOutDate DateTime
+
+  guests     Int
+  totalPrice Float
+
+  status BookingStatus @default(CONFIRMED)
+
+  review Review?
+
+  bookingDate DateTime  @default(now())
+  cancelledAt DateTime?
+
+  @@index([userId])
+  @@index([roomId])
+  @@index([hotelId])
+  @@index([checkInDate])
+  @@index([checkOutDate])
+  @@index([status])
+  @@map("bookings")
+}
+
+model Review {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  hotelId String
+  hotel   Hotel  @relation(fields: [hotelId], references: [id])
+
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id])
+
+  rating  Int
+  comment String?
+
+  createdAt DateTime @default(now())
+
+  @@index([hotelId])
+  @@index([userId])
+  @@map("reviews")
 }
